@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>簡易AR表示テスト（常に前方上空）</title>
+  <title>AR基本テスト（Z=-3固定）</title>
   <style>
     html, body { margin: 0; overflow: hidden; background: black; }
     video { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: -1; }
@@ -23,7 +23,7 @@
       .catch(err => alert("カメラエラー：" + err.message));
 
     scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     renderer = new THREE.WebGLRenderer({ alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
@@ -31,17 +31,15 @@
     controls = new THREE.DeviceOrientationControls(camera);
 
     const texture = new THREE.TextureLoader().load("assets/cbc_logo.png");
-    const geometry = new THREE.PlaneGeometry(100, 11.1);
+    const geometry = new THREE.PlaneGeometry(1, 0.111); // 縦横比維持（1:0.111）
     const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
     logoMesh = new THREE.Mesh(geometry, material);
-
-    logoMesh.position.set(0, 200, -60); // 前方60m、上空200m
+    logoMesh.position.set(0, 0, -3); // 目の前3mに表示
     scene.add(logoMesh);
 
     function animate() {
       requestAnimationFrame(animate);
-      controls.update();
-      logoMesh.rotation.y += 0.01;
+      controls.update(); // スマホの向きを反映
       renderer.render(scene, camera);
     }
     animate();
