@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>ロゴ比率調整済み（常時見える）</title>
+  <title>テレビ塔ロゴAR - 視野制御版</title>
   <style>
     html, body { margin: 0; overflow: hidden; background: black; }
     video { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: -1; }
@@ -16,17 +16,19 @@
   <script>
     let scene, camera, renderer, logoMesh;
 
+    const towerLat = 35.1709;
+    const towerLon = 136.9066;
+
+    let userLat = null;
+    let userLon = null;
+
     const video = document.getElementById("bgvideo");
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-      .then(function(stream) {
-        video.srcObject = stream;
-      })
-      .catch(function(err) {
-        alert("カメラ取得エラー：" + err.message);
-      });
+      .then(stream => { video.srcObject = stream; })
+      .catch(err => alert("カメラ取得エラー：" + err.message));
 
     scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 10000);
     renderer = new THREE.WebGLRenderer({ alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
@@ -35,10 +37,52 @@
     const geometry = new THREE.PlaneGeometry(100, 11.1);
     const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
     logoMesh = new THREE.Mesh(geometry, material);
-    logoMesh.position.set(0, 0, -60);
+    logoMesh.visible = false;
     scene.add(logoMesh);
 
-    camera.lookAt(logoMesh.position);
+    function toRad(deg) { return deg * Math.PI / 180; }
+    function toDeg(rad) { return rad * 180 / Math.PI; }
+
+    function getBearing(lat1, lon1, lat2, lon2) {
+      const dLon = toRad(lon2 - lon1);
+      const y = Math.sin(dLon) * Math.cos(toRad(lat2));
+      const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+                Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+      return (toDeg(Math.atan2(y, x)) + 360) % 360;
+    }
+
+    function getDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon / 2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function updateLogoAndCamera() {
+      if (userLat === null || userLon === null) return;
+      const distance = getDistance(userLat, userLon, towerLat, towerLon);
+      const bearing = getBearing(userLat, userLon, towerLat, towerLon);
+      const bearingRad = toRad(bearing);
+
+      const x = Math.sin(bearingRad) * distance;
+      const z = -Math.cos(bearingRad) * distance;
+      const y = 200;
+
+      logoMesh.position.set(x, y, z);
+      camera.position.set(0, 0, 0); // 現在地を仮の中心とする
+      camera.lookAt(logoMesh.position);
+      logoMesh.visible = true;
+    }
+
+    navigator.geolocation.watchPosition(pos => {
+      userLat = pos.coords.latitude;
+      userLon = pos.coords.longitude;
+      updateLogoAndCamera();
+    });
 
     function animate() {
       requestAnimationFrame(animate);
