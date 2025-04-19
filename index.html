@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>テレビ塔ロゴAR - 視野制御版</title>
+  <title>本物のARロゴ（TV塔に浮かぶ）</title>
   <style>
     html, body { margin: 0; overflow: hidden; background: black; }
     video { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: -1; }
@@ -12,9 +12,10 @@
 <body>
   <video id="bgvideo" autoplay playsinline muted></video>
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/examples/js/controls/DeviceOrientationControls.js"></script>
 
   <script>
-    let scene, camera, renderer, logoMesh;
+    let scene, camera, renderer, controls, logoMesh;
 
     const towerLat = 35.1709;
     const towerLon = 136.9066;
@@ -28,10 +29,12 @@
       .catch(err => alert("カメラ取得エラー：" + err.message));
 
     scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 10000);
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
     renderer = new THREE.WebGLRenderer({ alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
+
+    controls = new THREE.DeviceOrientationControls(camera);
 
     const texture = new THREE.TextureLoader().load("assets/cbc_logo.png");
     const geometry = new THREE.PlaneGeometry(100, 11.1);
@@ -62,7 +65,7 @@
       return R * c;
     }
 
-    function updateLogoAndCamera() {
+    function updateLogoPosition() {
       if (userLat === null || userLon === null) return;
       const distance = getDistance(userLat, userLon, towerLat, towerLon);
       const bearing = getBearing(userLat, userLon, towerLat, towerLon);
@@ -73,20 +76,19 @@
       const y = 200;
 
       logoMesh.position.set(x, y, z);
-      camera.position.set(0, 0, 0); // 現在地を仮の中心とする
-      camera.lookAt(logoMesh.position);
       logoMesh.visible = true;
     }
 
     navigator.geolocation.watchPosition(pos => {
       userLat = pos.coords.latitude;
       userLon = pos.coords.longitude;
-      updateLogoAndCamera();
+      updateLogoPosition();
     });
 
     function animate() {
       requestAnimationFrame(animate);
-      logoMesh.rotation.y += 0.01;
+      controls.update(); // スマホの物理向きをカメラに反映
+      if (logoMesh.visible) logoMesh.rotation.y += 0.01;
       renderer.render(scene, camera);
     }
     animate();
