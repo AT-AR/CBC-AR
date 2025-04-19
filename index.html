@@ -1,51 +1,28 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <title>AR風ロゴ表示（テレビ塔方角）</title>
+  <meta charset="UTF-8">
+  <title>Three.js AR風ロゴ（テレビ塔方向）</title>
   <style>
     html, body { margin: 0; overflow: hidden; background: black; }
-    video {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw; height: 100vh;
-      object-fit: cover;
-      z-index: -1;
-    }
-    #logo {
-      position: fixed;
-      top: 50%; left: 50%;
-      width: 200px; height: 200px;
-      transform: translate(-50%, -50%);
-      animation: spin 6s linear infinite;
-      display: none;
-    }
-    @keyframes spin {
-      from { transform: translate(-50%, -50%) rotateY(0deg); }
-      to { transform: translate(-50%, -50%) rotateY(360deg); }
-    }
+    #bgvideo { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: -1; }
+    canvas { position: fixed; top: 0; left: 0; }
   </style>
 </head>
 <body>
-  <video id="videoElement" autoplay playsinline></video>
-  <img src="assets/cbc_logo.png" id="logo" />
+  <video id="bgvideo" autoplay playsinline muted></video>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
 
   <script>
-    const logo = document.getElementById("logo");
-    const video = document.getElementById("videoElement");
+    let scene, camera, renderer, logoMesh;
+    const logoSize = 100;
 
-    // カメラ映像表示
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
-      .then(stream => { video.srcObject = stream; })
-      .catch(err => { alert("カメラが使えません：" + err.message); });
-
-    // テレビ塔の位置
+    // テレビ塔の座標（名古屋テレビ塔）
     const towerLat = 35.1709;
     const towerLon = 136.9066;
-
     let currentBearing = 0;
 
-    // ベアリング（角度）計算
+    // ベアリング計算
     function calculateBearing(lat1, lon1, lat2, lon2) {
       const toRad = x => x * Math.PI / 180;
       const dLon = toRad(lon2 - lon1);
@@ -56,25 +33,55 @@
       return (brng * 180 / Math.PI + 360) % 360;
     }
 
-    // 現在位置取得
+    // GPS監視
     navigator.geolocation.watchPosition(pos => {
       const lat = pos.coords.latitude;
       const lon = pos.coords.longitude;
       currentBearing = calculateBearing(lat, lon, towerLat, towerLon);
     });
 
-    // スマホの向きと比較してロゴ表示（±15°）
-    window.addEventListener("deviceorientationabsolute" in window ? "deviceorientationabsolute" : "deviceorientation", (e) => {
-      const alpha = e.alpha;
+    // カメラ映像
+    const video = document.getElementById("bgvideo");
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .then(stream => { video.srcObject = stream; })
+      .catch(err => alert("カメラにアクセスできません: " + err.message));
+
+    // Three.js 初期化
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    renderer = new THREE.WebGLRenderer({ alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // ロゴ追加
+    const texture = new THREE.TextureLoader().load("assets/cbc_logo.png");
+    const geometry = new THREE.PlaneGeometry(logoSize, logoSize);
+    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
+    logoMesh = new THREE.Mesh(geometry, material);
+    logoMesh.position.set(0, 0, -200); // 視野奥200mに配置
+    scene.add(logoMesh);
+
+    // 向き検出
+    window.addEventListener("deviceorientation", (event) => {
+      const alpha = event.alpha;
       if (alpha !== null) {
         const diff = Math.abs(currentBearing - alpha);
         if (diff < 15 || diff > 345) {
-          logo.style.display = "block";
+          logoMesh.visible = true;
         } else {
-          logo.style.display = "none";
+          logoMesh.visible = false;
         }
+        camera.rotation.set(0, THREE.MathUtils.degToRad(alpha), 0);
       }
     }, true);
+
+    // アニメーション
+    function animate() {
+      requestAnimationFrame(animate);
+      if (logoMesh) logoMesh.rotation.y += 0.01;
+      renderer.render(scene, camera);
+    }
+    animate();
   </script>
 </body>
 </html>
