@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <title>AR Logo Over Nagoya TV Tower (1km Range)</title>
+  <meta charset="UTF-8">
+  <title>Direction-based AR Logo</title>
   <style>
-    body, html {
+    html, body {
       margin: 0;
       overflow: hidden;
+      background: #000;
     }
     canvas {
       display: block;
@@ -20,35 +21,50 @@
       const lat = pos.coords.latitude;
       const lon = pos.coords.longitude;
       const distance = Math.sqrt(Math.pow(lat - 35.1709, 2) + Math.pow(lon - 136.9066, 2));
-      if (distance < 0.01) { // 約1.1km
-        startAR();
+      if (distance < 0.01) {
+        init();
       } else {
-        document.body.innerHTML = '<h1 style="text-align:center;margin-top:20%;font-family:sans-serif;">ここでは表示できません。</h1>';
+        document.body.innerHTML = '<h1 style="color:white;text-align:center;margin-top:20%;">ここでは表示できません</h1>';
       }
     });
 
-    function startAR() {
-      const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-      const renderer = new THREE.WebGLRenderer();
+    let scene, camera, renderer, logo;
+
+    function init() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+      renderer = new THREE.WebGLRenderer({ alpha: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
       document.body.appendChild(renderer.domElement);
 
       const texture = new THREE.TextureLoader().load('assets/cbc_logo.png');
       const geometry = new THREE.PlaneGeometry(10, 10);
       const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-      const logo = new THREE.Mesh(geometry, material);
+      logo = new THREE.Mesh(geometry, material);
+      logo.position.set(0, 0, -50); // 前方50mにロゴを配置
       scene.add(logo);
 
-      camera.position.z = 20;
+      camera.position.set(0, 0, 0);
 
-      function animate() {
-        requestAnimationFrame(animate);
-        logo.rotation.y += 0.01;
-        renderer.render(scene, camera);
-      }
+      window.addEventListener("deviceorientation", (event) => {
+        const alpha = event.alpha || 0;
+        const beta = event.beta || 0;
+        const gamma = event.gamma || 0;
+
+        const radAlpha = THREE.MathUtils.degToRad(alpha);
+        const radBeta = THREE.MathUtils.degToRad(beta);
+        const radGamma = THREE.MathUtils.degToRad(gamma);
+
+        camera.rotation.set(radBeta, radAlpha, -radGamma);
+      }, true);
 
       animate();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      if (logo) logo.rotation.y += 0.01;
+      renderer.render(scene, camera);
     }
   </script>
 </body>
