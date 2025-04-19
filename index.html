@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>CBC AR 強制表示ver</title>
+  <title>CBC AR 視認確認</title>
   <style>
     html, body { margin: 0; overflow: hidden; background: black; }
     video { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: -1; }
@@ -31,10 +31,10 @@
     controls = new THREE.DeviceOrientationControls(camera);
 
     const texture = new THREE.TextureLoader().load("assets/cbc_logo.png");
-    const geometry = new THREE.PlaneGeometry(2000, 222);
-    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
+    const geometry = new THREE.PlaneGeometry(100, 11.1); // アスペクト比維持
+    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: false, side: THREE.DoubleSide });
     logoMesh = new THREE.Mesh(geometry, material);
-    logoMesh.position.set(0, 0, -300); // 中央から300m先に常に出す
+    logoMesh.position.set(0, 0, -3); // カメラの目の前3m
     scene.add(logoMesh);
 
     function animate() {
