@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>AR基本テスト（Z=-3固定）</title>
+  <title>AR描画テスト（赤い板）</title>
   <style>
     html, body { margin: 0; overflow: hidden; background: black; }
     video { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: -1; }
@@ -15,7 +15,7 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/examples/js/controls/DeviceOrientationControls.js"></script>
 
   <script>
-    let scene, camera, renderer, controls, logoMesh;
+    let scene, camera, renderer, controls, testPlane;
 
     const video = document.getElementById("bgvideo");
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
@@ -30,16 +30,15 @@
 
     controls = new THREE.DeviceOrientationControls(camera);
 
-    const texture = new THREE.TextureLoader().load("assets/cbc_logo.png");
-    const geometry = new THREE.PlaneGeometry(1, 0.111); // 縦横比維持（1:0.111）
-    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
-    logoMesh = new THREE.Mesh(geometry, material);
-    logoMesh.position.set(0, 0, -3); // 目の前3mに表示
-    scene.add(logoMesh);
+    const geometry = new THREE.PlaneGeometry(5, 5);
+    const material = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide });
+    testPlane = new THREE.Mesh(geometry, material);
+    testPlane.position.set(0, 0, -3); // 完全に視野中央
+    scene.add(testPlane);
 
     function animate() {
       requestAnimationFrame(animate);
-      controls.update(); // スマホの向きを反映
+      controls.update();
       renderer.render(scene, camera);
     }
     animate();
