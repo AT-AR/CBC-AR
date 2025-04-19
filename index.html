@@ -1,14 +1,55 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>CBC AR Demo</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <title>AR Logo Over Nagoya TV Tower (1km Range)</title>
+  <style>
+    body, html {
+      margin: 0;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <img id="logo" src="assets/cbc_logo.png" alt="CBCロゴ">
-  </div>
-  <script src="script.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+  <script>
+    navigator.geolocation.getCurrentPosition(function(pos) {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      const distance = Math.sqrt(Math.pow(lat - 35.1709, 2) + Math.pow(lon - 136.9066, 2));
+      if (distance < 0.01) { // 約1.1km
+        startAR();
+      } else {
+        document.body.innerHTML = '<h1 style="text-align:center;margin-top:20%;font-family:sans-serif;">ここでは表示できません。</h1>';
+      }
+    });
+
+    function startAR() {
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      const texture = new THREE.TextureLoader().load('assets/cbc_logo.png');
+      const geometry = new THREE.PlaneGeometry(10, 10);
+      const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+      const logo = new THREE.Mesh(geometry, material);
+      scene.add(logo);
+
+      camera.position.z = 20;
+
+      function animate() {
+        requestAnimationFrame(animate);
+        logo.rotation.y += 0.01;
+        renderer.render(scene, camera);
+      }
+
+      animate();
+    }
+  </script>
 </body>
 </html>
