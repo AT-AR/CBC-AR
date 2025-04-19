@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>AR描画テスト（赤い板）</title>
+  <title>CBC AR FINAL</title>
   <style>
     html, body { margin: 0; overflow: hidden; background: black; }
     video { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: -1; }
@@ -15,7 +15,13 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/examples/js/controls/DeviceOrientationControls.js"></script>
 
   <script>
-    let scene, camera, renderer, controls, testPlane;
+    let scene, camera, renderer, controls, logoMesh;
+
+    const towerLat = 35.1709;
+    const towerLon = 136.9066;
+
+    let userLat = null;
+    let userLon = null;
 
     const video = document.getElementById("bgvideo");
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
@@ -23,22 +29,66 @@
       .catch(err => alert("カメラエラー：" + err.message));
 
     scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
     renderer = new THREE.WebGLRenderer({ alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
     controls = new THREE.DeviceOrientationControls(camera);
 
-    const geometry = new THREE.PlaneGeometry(5, 5);
-    const material = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide });
-    testPlane = new THREE.Mesh(geometry, material);
-    testPlane.position.set(0, 0, -3); // 完全に視野中央
-    scene.add(testPlane);
+    const texture = new THREE.TextureLoader().load("assets/cbc_logo.png");
+    const geometry = new THREE.PlaneGeometry(100, 11.1);
+    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
+    logoMesh = new THREE.Mesh(geometry, material);
+    logoMesh.visible = false;
+    scene.add(logoMesh);
+
+    function toRad(deg) { return deg * Math.PI / 180; }
+    function toDeg(rad) { return rad * 180 / Math.PI; }
+
+    function getBearing(lat1, lon1, lat2, lon2) {
+      const dLon = toRad(lon2 - lon1);
+      const y = Math.sin(dLon) * Math.cos(toRad(lat2));
+      const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+                Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+      return (toDeg(Math.atan2(y, x)) + 360) % 360;
+    }
+
+    function getDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon / 2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function updateLogoPosition() {
+      if (userLat === null || userLon === null) return;
+      const distance = getDistance(userLat, userLon, towerLat, towerLon);
+      const bearing = getBearing(userLat, userLon, towerLat, towerLon);
+      const bearingRad = toRad(bearing);
+
+      const x = Math.sin(bearingRad) * distance;
+      const z = -Math.cos(bearingRad) * distance;
+      const y = 200;
+
+      logoMesh.position.set(x, y, z);
+      logoMesh.visible = true;
+    }
+
+    navigator.geolocation.watchPosition(pos => {
+      userLat = pos.coords.latitude;
+      userLon = pos.coords.longitude;
+      updateLogoPosition();
+    });
 
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
+      if (logoMesh.visible) logoMesh.rotation.y += 0.01;
       renderer.render(scene, camera);
     }
     animate();
