@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>CBCロゴ AR（再現構成）</title>
+  <title>CBCロゴ AR（ステップ1）</title>
   <style>
     html, body {
       margin: 0;
@@ -52,7 +52,7 @@
     document.body.appendChild(renderer.domElement);
 
     const texture = new THREE.TextureLoader().load("assets/cbc_logo.png");
-    const geometry = new THREE.PlaneGeometry(2, 0.444);
+    const geometry = new THREE.PlaneGeometry(2, 0.444);  // 横長比率を維持
     const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
     const logo = new THREE.Mesh(geometry, material);
     scene.add(logo);
