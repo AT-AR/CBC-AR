@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>ARロゴ常時表示テスト</title>
+  <title>ARロゴ（3m前に固定表示テスト）</title>
   <style>
     html, body {
       margin: 0;
@@ -84,11 +84,6 @@
       }
     }
 
-    const tvTowerLat = 35.170915;
-    const tvTowerLon = 136.908498;
-    const earthMeterPerDegree = 111000;
-    let currentLat = null, currentLon = null;
-
     const startButton = document.getElementById("startButton");
     const video = document.getElementById("cameraFeed");
     let scene, camera, renderer, controls, logo;
@@ -97,11 +92,6 @@
       navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
         .then(stream => {
           video.srcObject = stream;
-          navigator.geolocation.watchPosition(position => {
-            currentLat = position.coords.latitude;
-            currentLon = position.coords.longitude;
-          }, e => console.error("GPS error:", e), { enableHighAccuracy: true });
-
           if (typeof DeviceMotionEvent !== "undefined" &&
               typeof DeviceMotionEvent.requestPermission === "function") {
             DeviceMotionEvent.requestPermission().then(response => {
@@ -131,10 +121,12 @@
       controls = new DeviceOrientationControls(camera);
 
       const texture = new THREE.TextureLoader().load("logo.png");
-      const geometry = new THREE.PlaneGeometry(100, 30); // 縦横比固定（仮）
+      const geometry = new THREE.PlaneGeometry(100, 30);
       const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
       logo = new THREE.Mesh(geometry, material);
-      scene.add(logo);
+      logo.position.set(0, 0, -3); // カメラから見て3m先に表示
+      camera.add(logo); // カメラに追従させる
+      scene.add(camera);
 
       animate();
     }
@@ -142,15 +134,6 @@
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
-
-      if (logo && currentLat !== null && currentLon !== null) {
-        const dx = (tvTowerLon - currentLon) * Math.cos(currentLat * Math.PI / 180) * earthMeterPerDegree;
-        const dz = (tvTowerLat - currentLat) * earthMeterPerDegree;
-        logo.position.set(dx, 200, -dz);
-        logo.visible = true; // 常時表示
-      }
-
-      if (logo) logo.rotation.y += 0.01;
       renderer.render(scene, camera);
     }
   </script>
