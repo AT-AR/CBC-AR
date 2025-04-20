@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>CBCロゴ AR（ステップ1）</title>
+  <title>テレビ塔AR（方向検知）</title>
   <style>
     html, body {
       margin: 0;
@@ -31,9 +31,11 @@
   <video id="bgvideo" autoplay muted playsinline></video>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+
   <script>
     const video = document.getElementById("bgvideo");
 
+    // カメラ起動
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
       .then(stream => {
         video.srcObject = stream;
@@ -43,6 +45,7 @@
       })
       .catch(err => alert("カメラエラー：" + err.message));
 
+    // Three.js 初期化
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
     camera.position.z = 3;
@@ -51,16 +54,58 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
+    // ロゴ設定
     const texture = new THREE.TextureLoader().load("assets/cbc_logo.png");
-    const geometry = new THREE.PlaneGeometry(2, 0.444);  // 横長比率を維持
+    const geometry = new THREE.PlaneGeometry(2, 0.444);
     const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
     const logo = new THREE.Mesh(geometry, material);
+    logo.visible = false;
     scene.add(logo);
+
+    // テレビ塔の座標（名古屋）
+    const towerLat = 35.1708;
+    const towerLon = 136.9086;
+    let userLat = null;
+    let userLon = null;
+    let heading = null;
+
+    // 現在地取得
+    navigator.geolocation.watchPosition(pos => {
+      userLat = pos.coords.latitude;
+      userLon = pos.coords.longitude;
+    }, err => {
+      alert("GPSエラー：" + err.message);
+    }, { enableHighAccuracy: true });
+
+    // 方位取得
+    window.addEventListener("deviceorientationabsolute", (e) => {
+      heading = e.alpha;
+    }, true);
+
+    // 方位角計算（正確な方向）
+    function calculateBearing(lat1, lon1, lat2, lon2) {
+      const toRad = x => x * Math.PI / 180;
+      const toDeg = x => x * 180 / Math.PI;
+      const dLon = toRad(lon2 - lon1);
+      const y = Math.sin(dLon) * Math.cos(toRad(lat2));
+      const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+                Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+      const brng = Math.atan2(y, x);
+      return (toDeg(brng) + 360) % 360;
+    }
 
     function animate() {
       requestAnimationFrame(animate);
+
+      if (userLat !== null && userLon !== null && heading !== null) {
+        const bearing = calculateBearing(userLat, userLon, towerLat, towerLon);
+        const diff = Math.abs(bearing - heading);
+        logo.visible = (diff < 20 || diff > 340); // ±20度範囲内
+      }
+
       renderer.render(scene, camera);
     }
+
     animate();
   </script>
 </body>
