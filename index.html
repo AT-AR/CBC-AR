@@ -2,13 +2,11 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>CBCロゴ AR（カメラ同期版）</title>
+    <title>CBCロゴ AR（再描画保証）</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
-    <style>
-      body { margin: 0; overflow: hidden; }
-    </style>
+    <style> body { margin: 0; overflow: hidden; } </style>
   </head>
   <body>
     <a-scene 
@@ -31,8 +29,9 @@
           rotation="0 0 0"
           width="2"
           height="0.444"
-          animation="property: rotation; to: 0 360 0; loop: true; dur: 10000"
-          transparent="true">
+          transparent="true"
+          material="alphaTest: 0.01"
+          animation="property: rotation; to: 0 360 0; loop: true; dur: 10000">
         </a-image>
       </a-entity>
 
@@ -40,11 +39,18 @@
     </a-scene>
 
     <script>
-      const scene = document.querySelector("a-scene");
       const logoContainer = document.getElementById("logo-container");
+      const cbcLogo = document.getElementById("cbc-logo");
 
-      scene.addEventListener("camera-init", () => {
+      const ensureVisible = () => {
         logoContainer.setAttribute("visible", "true");
+        cbcLogo.setAttribute("visible", "true");
+      };
+
+      document.querySelector("a-scene").addEventListener("camera-init", () => {
+        ensureVisible();
+        setTimeout(ensureVisible, 500);  // 再確認
+        setTimeout(ensureVisible, 1500); // 念押し
       });
     </script>
   </body>
