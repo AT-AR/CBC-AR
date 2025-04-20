@@ -2,50 +2,132 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>ロゴ単体表示テスト（カメラなし）</title>
+  <title>本格AR：VideoTexture方式</title>
   <style>
     html, body {
       margin: 0;
       overflow: hidden;
-      background: white;
+      background: black;
     }
     canvas {
       display: block;
     }
+    #startButton {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 16px 32px;
+      font-size: 18px;
+      z-index: 10;
+      background: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
+  <button id="startButton">モーションセンサーを有効にする</button>
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
   <script>
-    let scene = new THREE.Scene();
-    let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-    let renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
-
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
-    scene.add(ambientLight);
-
-    new THREE.TextureLoader().load("logo.png", (texture) => {
-      const geometry = new THREE.PlaneGeometry(100, 30);
-      const material = new THREE.MeshStandardMaterial({
-        map: texture,
-        emissive: new THREE.Color(1, 1, 1),
-        emissiveIntensity: 10.0,
-        transparent: true,
-        side: THREE.DoubleSide
-      });
-      const logo = new THREE.Mesh(geometry, material);
-      logo.position.z = -150;
-      scene.add(logo);
-
-      function animate() {
-        requestAnimationFrame(animate);
-        logo.rotation.y += 0.01;
-        renderer.render(scene, camera);
+    class DeviceOrientationControls {
+      constructor(object) {
+        this.object = object;
+        this.object.rotation.reorder("YXZ");
+        this.enabled = true;
+        this.deviceOrientation = {};
+        this.screenOrientation = 0;
+        this.alphaOffset = 0;
+        const onDeviceOrientationChangeEvent = (event) => {
+          this.deviceOrientation = event;
+        };
+        const onScreenOrientationChangeEvent = () => {
+          this.screenOrientation = window.orientation || 0;
+        };
+        window.addEventListener("orientationchange", onScreenOrientationChangeEvent);
+        window.addEventListener("deviceorientationabsolute", onDeviceOrientationChangeEvent);
+        onScreenOrientationChangeEvent();
+        this.setObjectQuaternion = (quaternion, alpha, beta, gamma, orient) => {
+          const zee = new THREE.Vector3(0, 0, 1);
+          const euler = new THREE.Euler();
+          const q0 = new THREE.Quaternion();
+          const q1 = new THREE.Quaternion(- Math.sqrt(0.5), 0, 0, Math.sqrt(0.5));
+          euler.set(beta, alpha, - gamma, 'YXZ');
+          quaternion.setFromEuler(euler);
+          quaternion.multiply(q1);
+          quaternion.multiply(q0.setFromAxisAngle(zee, - orient));
+        };
       }
-      animate();
+      update() {
+        if (!this.enabled) return;
+        const alpha = THREE.MathUtils.degToRad(this.deviceOrientation.alpha || 0) + this.alphaOffset;
+        const beta = THREE.MathUtils.degToRad(this.deviceOrientation.beta || 0);
+        const gamma = THREE.MathUtils.degToRad(this.deviceOrientation.gamma || 0);
+        const orient = THREE.MathUtils.degToRad(this.screenOrientation || 0);
+        this.setObjectQuaternion(this.object.quaternion, alpha, beta, gamma, orient);
+      }
+    }
+
+    const startButton = document.getElementById("startButton");
+
+    startButton.addEventListener("click", () => {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
+        .then(stream => {
+          startButton.style.display = "none";
+          initAR(stream);
+        }).catch(e => alert("⚠️ カメラ起動エラー: " + e.message));
     });
+
+    function initAR(stream) {
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
+      camera.position.set(0, 1.6, 0);
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      const controls = new DeviceOrientationControls(camera);
+      const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+      scene.add(ambientLight);
+
+      // カメラ映像をVideoTextureとして取り込み
+      const video = document.createElement("video");
+      video.srcObject = stream;
+      video.play();
+
+      const videoTexture = new THREE.VideoTexture(video);
+      const bgGeometry = new THREE.PlaneGeometry(16, 9);
+      bgGeometry.scale(1, 1, 1);
+      const bgMaterial = new THREE.MeshBasicMaterial({ map: videoTexture });
+      const backgroundMesh = new THREE.Mesh(bgGeometry, bgMaterial);
+      backgroundMesh.position.z = -5;
+      scene.add(backgroundMesh);
+
+      // ロゴを読み込み表示
+      new THREE.TextureLoader().load("logo.png", (texture) => {
+        const geometry = new THREE.PlaneGeometry(100, 30);
+        const material = new THREE.MeshStandardMaterial({
+          map: texture,
+          emissive: new THREE.Color(1, 1, 1),
+          emissiveIntensity: 10.0,
+          transparent: true,
+          side: THREE.DoubleSide
+        });
+        const logo = new THREE.Mesh(geometry, material);
+        logo.position.set(0, 0, -3);
+        camera.add(logo);
+        scene.add(camera);
+
+        function animate() {
+          requestAnimationFrame(animate);
+          controls.update();
+          logo.rotation.y += 0.01;
+          renderer.render(scene, camera);
+        }
+        animate();
+      });
+    }
   </script>
 </body>
 </html>
