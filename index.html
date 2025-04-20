@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>テレビ塔上空に100mロゴ</title>
+  <title>リアルタイム追跡AR（テレビ塔上空ロゴ）</title>
   <style>
     html, body {
       margin: 0;
@@ -86,7 +86,8 @@
 
     const tvTowerLat = 35.170915;
     const tvTowerLon = 136.908498;
-    const towerHeight = 200; // 表示高さ（200m）
+    const earthMeterPerDegree = 111000; // approximate
+    let currentLat = null, currentLon = null;
 
     const startButton = document.getElementById("startButton");
     const video = document.getElementById("cameraFeed");
@@ -96,29 +97,29 @@
       navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
         .then(stream => {
           video.srcObject = stream;
-          navigator.geolocation.getCurrentPosition(position => {
-            const userLat = position.coords.latitude;
-            const userLon = position.coords.longitude;
+          navigator.geolocation.watchPosition(position => {
+            currentLat = position.coords.latitude;
+            currentLon = position.coords.longitude;
+          }, e => console.error("GPS error:", e), { enableHighAccuracy: true });
 
-            if (typeof DeviceMotionEvent !== "undefined" &&
-                typeof DeviceMotionEvent.requestPermission === "function") {
-              DeviceMotionEvent.requestPermission().then(response => {
-                if (response === "granted") {
-                  startButton.style.display = "none";
-                  initAR(userLat, userLon);
-                } else {
-                  alert("❌ センサー使用が許可されませんでした。");
-                }
-              }).catch(e => alert("⚠️ センサーエラー: " + e.message));
-            } else {
-              startButton.style.display = "none";
-              initAR(userLat, userLon);
-            }
-          });
+          if (typeof DeviceMotionEvent !== "undefined" &&
+              typeof DeviceMotionEvent.requestPermission === "function") {
+            DeviceMotionEvent.requestPermission().then(response => {
+              if (response === "granted") {
+                startButton.style.display = "none";
+                initAR();
+              } else {
+                alert("❌ センサー使用が許可されませんでした。");
+              }
+            }).catch(e => alert("⚠️ センサーエラー: " + e.message));
+          } else {
+            startButton.style.display = "none";
+            initAR();
+          }
         }).catch(e => alert("⚠️ カメラ起動エラー: " + e.message));
     });
 
-    function initAR(userLat, userLon) {
+    function initAR() {
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
       camera.position.set(0, 1.6, 0);
@@ -130,33 +131,25 @@
       controls = new DeviceOrientationControls(camera);
 
       const texture = new THREE.TextureLoader().load("logo.png");
-      const geometry = new THREE.PlaneGeometry(100, 100); // 100mサイズ
+      const geometry = new THREE.PlaneGeometry(100, 100);
       const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
       logo = new THREE.Mesh(geometry, material);
       scene.add(logo);
 
-      const bearing = calculateBearing(userLat, userLon, tvTowerLat, tvTowerLon);
-      const distance = 3; // 表示距離
-      const rad = THREE.MathUtils.degToRad(bearing);
-      const x = Math.sin(rad) * distance;
-      const z = -Math.cos(rad) * distance;
-      logo.position.set(x, towerHeight, z); // 高さ200mに設定
-
       animate();
-    }
-
-    function calculateBearing(lat1, lon1, lat2, lon2) {
-      const toRad = d => d * Math.PI / 180;
-      const y = Math.sin(toRad(lon2 - lon1)) * Math.cos(toRad(lat2));
-      const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
-                Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lon2 - lon1));
-      return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
     }
 
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
-      logo.rotation.y += 0.01;
+
+      if (logo && currentLat !== null && currentLon !== null) {
+        const dx = (tvTowerLon - currentLon) * Math.cos(currentLat * Math.PI / 180) * earthMeterPerDegree;
+        const dz = (tvTowerLat - currentLat) * earthMeterPerDegree;
+        logo.position.set(dx, 200, -dz);
+      }
+
+      if (logo) logo.rotation.y += 0.01;
       renderer.render(scene, camera);
     }
   </script>
