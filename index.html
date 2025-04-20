@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>本格AR（カメラ背景確認版）</title>
+  <title>本格AR：完全表示テスト版</title>
   <style>
     html, body {
       margin: 0;
@@ -30,7 +30,7 @@
       top: 0;
       left: 0;
       padding: 8px;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0,0,0,0.8);
       color: #0f0;
       font-family: monospace;
       font-size: 14px;
@@ -116,18 +116,18 @@
       video.srcObject = stream;
 
       video.play().then(() => {
-        statusEl.textContent = "✅ カメラ再生中";
+        statusEl.textContent = "✅ カメラ再生中（描画中…）";
       }).catch(err => {
         statusEl.textContent = "❌ カメラ映像再生失敗: " + err.message;
         alert("❌ カメラ映像再生失敗: " + err.message);
       });
 
       const videoTexture = new THREE.VideoTexture(video);
-      const distance = 5;
+      const distance = 3;
       const height = 2 * Math.tan((camera.fov * Math.PI) / 360) * distance;
       const width = height * camera.aspect;
 
-      const bgGeometry = new THREE.PlaneGeometry(width, height);
+      const bgGeometry = new THREE.PlaneGeometry(width * 3, height * 3); // 拡大
       const bgMaterial = new THREE.MeshBasicMaterial({ map: videoTexture });
       const backgroundMesh = new THREE.Mesh(bgGeometry, bgMaterial);
       backgroundMesh.position.z = -distance;
@@ -143,13 +143,14 @@
           side: THREE.DoubleSide
         });
         const logo = new THREE.Mesh(geometry, material);
-        logo.position.set(0, 0, -3);
+        logo.position.set(0, 0, -distance);
         camera.add(logo);
         scene.add(camera);
 
         function animate() {
           requestAnimationFrame(animate);
           controls.update();
+          videoTexture.needsUpdate = true;
           logo.rotation.y += 0.01;
           renderer.render(scene, camera);
         }
