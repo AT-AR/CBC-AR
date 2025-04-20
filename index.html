@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>ARロゴ表示テスト（テクスチャ遅延対応）</title>
+  <title>光り輝くロゴ表示テスト</title>
   <style>
     html, body {
       margin: 0;
@@ -120,12 +120,21 @@
 
       controls = new DeviceOrientationControls(camera);
 
+      const light = new THREE.AmbientLight(0xffffff, 1.5);
+      scene.add(light);
+
       new THREE.TextureLoader().load("logo.png", (texture) => {
         const geometry = new THREE.PlaneGeometry(100, 30);
-        const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
+        const material = new THREE.MeshStandardMaterial({
+          map: texture,
+          emissive: new THREE.Color(1, 1, 1),
+          emissiveIntensity: 10.0,
+          transparent: true,
+          side: THREE.DoubleSide
+        });
         const logo = new THREE.Mesh(geometry, material);
-        logo.position.set(0, 0, -3); // カメラの3m前
-        camera.add(logo); // カメラに追従
+        logo.position.set(0, 0, -3);
+        camera.add(logo);
         scene.add(camera);
 
         function animate() {
