@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>テレビ塔AR（位置制御版）</title>
+  <title>テレビ塔AR（見える修正版）</title>
   <style>
     html, body {
       margin: 0;
@@ -36,7 +36,6 @@
   <script>
     const video = document.getElementById("bgvideo");
 
-    // カメラ映像表示
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
       .then(stream => {
         video.srcObject = stream;
@@ -45,17 +44,14 @@
         });
       });
 
-    // Three.jsセットアップ
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    // DeviceOrientationControls でカメラの向きを更新
     const controls = new THREE.DeviceOrientationControls(camera);
 
-    // ロゴの設定
     const texture = new THREE.TextureLoader().load("assets/cbc_logo.png");
     const geometry = new THREE.PlaneGeometry(2, 0.444);
     const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
@@ -66,12 +62,13 @@
       requestAnimationFrame(animate);
       controls.update();
 
-      // カメラの向いている方向に3m先へロゴを配置
-      const direction = new THREE.Vector3(0, 0, -1);
-      direction.applyQuaternion(camera.quaternion);
-      logo.position.copy(camera.position).add(direction.multiplyScalar(3));
+      // 前方3mに配置（カメラは常に原点）
+      const forward = new THREE.Vector3(0, 0, -1);
+      forward.applyQuaternion(camera.quaternion);
+      logo.position.copy(forward.multiplyScalar(3));
 
-      logo.lookAt(camera.position); // ロゴがカメラに常に正面を向ける
+      // カメラ方向を向かせる
+      logo.lookAt(new THREE.Vector3(0, 0, 0));
 
       renderer.render(scene, camera);
     }
