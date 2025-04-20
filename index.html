@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>テレビ塔AR（見える修正版）</title>
+  <title>テレビ塔AR（ロゴ10m版）</title>
   <style>
     html, body {
       margin: 0;
@@ -52,8 +52,9 @@
 
     const controls = new THREE.DeviceOrientationControls(camera);
 
+    // サイズ：横10m（高さは比率保持で4.44m）
     const texture = new THREE.TextureLoader().load("assets/cbc_logo.png");
-    const geometry = new THREE.PlaneGeometry(2, 0.444);
+    const geometry = new THREE.PlaneGeometry(10, 4.44);
     const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
     const logo = new THREE.Mesh(geometry, material);
     scene.add(logo);
@@ -62,12 +63,12 @@
       requestAnimationFrame(animate);
       controls.update();
 
-      // 前方3mに配置（カメラは常に原点）
+      // カメラの前方3mにロゴを配置
       const forward = new THREE.Vector3(0, 0, -1);
       forward.applyQuaternion(camera.quaternion);
       logo.position.copy(forward.multiplyScalar(3));
 
-      // カメラ方向を向かせる
+      // ロゴをカメラ方向に向ける
       logo.lookAt(new THREE.Vector3(0, 0, 0));
 
       renderer.render(scene, camera);
