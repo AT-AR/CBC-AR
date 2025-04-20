@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>CBCロゴ AR（A-Frame版）</title>
+    <title>CBCロゴ AR（カメラ同期版）</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
@@ -11,24 +11,41 @@
     </style>
   </head>
   <body>
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
+    <a-scene 
+      embedded 
+      arjs="sourceType: webcam; debugUIEnabled: false;"
+      vr-mode-ui="enabled: false"
+      renderer="logarithmicDepthBuffer: true;"
+      loading-screen="enabled: true"
+      id="scene"
+    >
       <a-assets>
         <img id="cbcLogo" src="assets/cbc_logo.png" />
       </a-assets>
 
-      <!-- ロゴを常に表示（見やすい位置） -->
-      <a-image 
-        src="#cbcLogo" 
-        position="0 1.6 -3" 
-        rotation="0 0 0" 
-        width="2" 
-        height="0.222" 
-        animation="property: rotation; to: 0 360 0; loop: true; dur: 10000"
-        transparent="true">
-      </a-image>
+      <a-entity id="logo-container" visible="false">
+        <a-image 
+          id="cbc-logo"
+          src="#cbcLogo"
+          position="0 1.6 -3"
+          rotation="0 0 0"
+          width="2"
+          height="0.444"
+          animation="property: rotation; to: 0 360 0; loop: true; dur: 10000"
+          transparent="true">
+        </a-image>
+      </a-entity>
 
-      <!-- カメラ -->
       <a-entity camera></a-entity>
     </a-scene>
+
+    <script>
+      const scene = document.querySelector("a-scene");
+      const logoContainer = document.getElementById("logo-container");
+
+      scene.addEventListener("camera-init", () => {
+        logoContainer.setAttribute("visible", "true");
+      });
+    </script>
   </body>
 </html>
