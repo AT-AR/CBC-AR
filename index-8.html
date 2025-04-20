@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>AR起動テスト</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: black;
+      color: white;
+      font-family: sans-serif;
+      height: 100%;
+    }
+    #startButton {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 16px 32px;
+      font-size: 18px;
+      background: white;
+      color: black;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <button id="startButton">センサーを有効にする</button>
+
+  <script>
+    const startButton = document.getElementById("startButton");
+
+    startButton.addEventListener("click", () => {
+      if (typeof DeviceMotionEvent !== "undefined" &&
+          typeof DeviceMotionEvent.requestPermission === "function") {
+        DeviceMotionEvent.requestPermission()
+          .then(response => {
+            if (response === "granted") {
+              alert("Hello, AR! Three.js は動いてます！");
+            } else {
+              alert("センサー許可が拒否されました。");
+            }
+          })
+          .catch(err => {
+            alert("センサー許可エラー: " + err.message);
+          });
+      } else {
+        alert("非iOS端末、センサー許可は不要です。Three.js は動いてます！");
+      }
+    });
+  </script>
+</body>
+</html>
