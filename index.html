@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>本格AR：VideoTexture方式</title>
+  <title>本格AR：背景比率自動調整版</title>
   <style>
     html, body {
       margin: 0;
@@ -97,14 +97,19 @@
       video.play();
 
       const videoTexture = new THREE.VideoTexture(video);
-      const bgGeometry = new THREE.PlaneGeometry(16, 9);
-      bgGeometry.scale(1, 1, 1);
+
+      // 背景プレーンのサイズをカメラの視野角と画面サイズから自動調整
+      const distance = 5;
+      const height = 2 * Math.tan((camera.fov * Math.PI) / 360) * distance;
+      const width = height * camera.aspect;
+
+      const bgGeometry = new THREE.PlaneGeometry(width, height);
       const bgMaterial = new THREE.MeshBasicMaterial({ map: videoTexture });
       const backgroundMesh = new THREE.Mesh(bgGeometry, bgMaterial);
-      backgroundMesh.position.z = -5;
+      backgroundMesh.position.z = -distance;
       scene.add(backgroundMesh);
 
-      // ロゴを読み込み表示
+      // ロゴの読み込みと表示
       new THREE.TextureLoader().load("logo.png", (texture) => {
         const geometry = new THREE.PlaneGeometry(100, 30);
         const material = new THREE.MeshStandardMaterial({
