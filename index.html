@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>本格AR：完全表示テスト版</title>
+  <title>本格AR：自然奥行き＆感動演出版</title>
   <style>
     html, body {
       margin: 0;
@@ -116,21 +116,17 @@
       video.srcObject = stream;
 
       video.play().then(() => {
-        statusEl.textContent = "✅ カメラ再生中（描画中…）";
+        statusEl.textContent = "✅ カメラ再生中（背景同期中…）";
       }).catch(err => {
         statusEl.textContent = "❌ カメラ映像再生失敗: " + err.message;
         alert("❌ カメラ映像再生失敗: " + err.message);
       });
 
       const videoTexture = new THREE.VideoTexture(video);
-      const distance = 3;
-      const height = 2 * Math.tan((camera.fov * Math.PI) / 360) * distance;
-      const width = height * camera.aspect;
-
-      const bgGeometry = new THREE.PlaneGeometry(width * 3, height * 3); // 拡大
       const bgMaterial = new THREE.MeshBasicMaterial({ map: videoTexture });
+      const bgGeometry = new THREE.PlaneGeometry(10, 10);  // 十分に大きく
+
       const backgroundMesh = new THREE.Mesh(bgGeometry, bgMaterial);
-      backgroundMesh.position.z = -distance;
       scene.add(backgroundMesh);
 
       new THREE.TextureLoader().load("logo.png", (texture) => {
@@ -143,7 +139,7 @@
           side: THREE.DoubleSide
         });
         const logo = new THREE.Mesh(geometry, material);
-        logo.position.set(0, 0, -distance);
+        logo.position.set(0, 0, -3);
         camera.add(logo);
         scene.add(camera);
 
@@ -151,6 +147,13 @@
           requestAnimationFrame(animate);
           controls.update();
           videoTexture.needsUpdate = true;
+
+          // 背景をカメラ前方に常に再配置
+          const camDir = new THREE.Vector3();
+          camera.getWorldDirection(camDir);
+          backgroundMesh.position.copy(camera.position).add(camDir.multiplyScalar(3));
+          backgroundMesh.quaternion.copy(camera.quaternion);
+
           logo.rotation.y += 0.01;
           renderer.render(scene, camera);
         }
