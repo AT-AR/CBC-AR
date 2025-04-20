@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>本格AR：背景比率自動調整版</title>
+  <title>本格AR（カメラ背景確認版）</title>
   <style>
     html, body {
       margin: 0;
@@ -25,12 +25,26 @@
       border-radius: 8px;
       cursor: pointer;
     }
+    #status {
+      position: absolute;
+      top: 0;
+      left: 0;
+      padding: 8px;
+      background: rgba(0,0,0,0.7);
+      color: #0f0;
+      font-family: monospace;
+      font-size: 14px;
+      z-index: 10;
+    }
   </style>
 </head>
 <body>
+  <div id="status">📡 準備中…</div>
   <button id="startButton">モーションセンサーを有効にする</button>
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
   <script>
+    const statusEl = document.getElementById("status");
+
     class DeviceOrientationControls {
       constructor(object) {
         this.object = object;
@@ -76,7 +90,10 @@
         .then(stream => {
           startButton.style.display = "none";
           initAR(stream);
-        }).catch(e => alert("⚠️ カメラ起動エラー: " + e.message));
+        }).catch(e => {
+          statusEl.textContent = "❌ カメラ起動失敗: " + e.message;
+          alert("❌ カメラエラー: " + e.message);
+        });
     });
 
     function initAR(stream) {
@@ -91,14 +108,21 @@
       const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
       scene.add(ambientLight);
 
-      // カメラ映像をVideoTextureとして取り込み
       const video = document.createElement("video");
+      video.setAttribute("autoplay", true);
+      video.setAttribute("muted", true);
+      video.setAttribute("playsinline", true);
+      video.muted = true;
       video.srcObject = stream;
-      video.play();
+
+      video.play().then(() => {
+        statusEl.textContent = "✅ カメラ再生中";
+      }).catch(err => {
+        statusEl.textContent = "❌ カメラ映像再生失敗: " + err.message;
+        alert("❌ カメラ映像再生失敗: " + err.message);
+      });
 
       const videoTexture = new THREE.VideoTexture(video);
-
-      // 背景プレーンのサイズをカメラの視野角と画面サイズから自動調整
       const distance = 5;
       const height = 2 * Math.tan((camera.fov * Math.PI) / 360) * distance;
       const width = height * camera.aspect;
@@ -109,7 +133,6 @@
       backgroundMesh.position.z = -distance;
       scene.add(backgroundMesh);
 
-      // ロゴの読み込みと表示
       new THREE.TextureLoader().load("logo.png", (texture) => {
         const geometry = new THREE.PlaneGeometry(100, 30);
         const material = new THREE.MeshStandardMaterial({
