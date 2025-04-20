@@ -2,61 +2,62 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>CBCロゴ AR（修正版）</title>
+  <title>CBCロゴ AR（Canvas背景方式）</title>
   <style>
     html, body {
       margin: 0;
       overflow: hidden;
-      background: black;
       height: 100%;
-    }
-    video#bgvideo {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      object-fit: cover;
-      z-index: -1;
       background: black;
     }
     canvas {
-      position: fixed;
+      display: block;
+      position: absolute;
       top: 0;
       left: 0;
-      z-index: 1;
     }
   </style>
 </head>
 <body>
-  <video id="bgvideo" autoplay muted playsinline></video>
+  <video id="video" autoplay muted playsinline style="display:none;"></video>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
-
   <script>
-    const video = document.getElementById("bgvideo");
-
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-      .then(stream => {
-        video.srcObject = stream;
-        video.addEventListener("loadedmetadata", () => {
-          video.play().catch(e => console.log("再生失敗:", e));
-        });
-      })
-      .catch(err => alert("カメラ起動エラー：" + err.message));
-
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
     camera.position.z = 3;
 
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
+    // カメラ映像取得
+    const video = document.getElementById("video");
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .then(stream => {
+        video.srcObject = stream;
+        video.play().catch(e => console.warn("play error", e));
+      });
+
+    // ビデオをテクスチャとして使用
+    const videoTexture = new THREE.VideoTexture(video);
+    videoTexture.minFilter = THREE.LinearFilter;
+    videoTexture.magFilter = THREE.LinearFilter;
+    videoTexture.format = THREE.RGBFormat;
+
+    const videoMaterial = new THREE.MeshBasicMaterial({ map: videoTexture });
+    const videoGeometry = new THREE.PlaneGeometry(16, 9);
+    videoGeometry.scale(1, window.innerHeight / window.innerWidth, 1); // スマホ比対応
+    const videoMesh = new THREE.Mesh(videoGeometry, videoMaterial);
+    videoMesh.position.z = -5;
+    scene.add(videoMesh);
+
+    // ロゴ
     const texture = new THREE.TextureLoader().load("assets/cbc_logo.png");
-    const geometry = new THREE.PlaneGeometry(2, 0.444);
-    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-    const logo = new THREE.Mesh(geometry, material);
+    const logoGeo = new THREE.PlaneGeometry(2, 0.444);
+    const logoMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+    const logo = new THREE.Mesh(logoGeo, logoMat);
+    logo.position.set(0, 0, 0);
     scene.add(logo);
 
     function animate() {
