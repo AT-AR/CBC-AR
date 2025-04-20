@@ -1,56 +1,32 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>CBCロゴ AR（最終テスト）</title>
+  <meta charset="UTF-8" />
+  <title>CBCロゴ TEST（Three.jsのみ）</title>
   <style>
     html, body { margin: 0; overflow: hidden; background: black; height: 100%; }
-    #bgvideo {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw;
-      height: 100vh;
-      object-fit: cover;
-      z-index: -1;
-    }
-    canvas {
-      position: fixed;
-      top: 0; left: 0;
-      z-index: 1;
-    }
+    canvas { display: block; }
   </style>
 </head>
 <body>
-  <video id="bgvideo" autoplay playsinline muted></video>
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/examples/js/controls/DeviceOrientationControls.js"></script>
-
   <script>
-    const video = document.getElementById("bgvideo");
-
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-      .then(stream => { video.srcObject = stream; })
-      .catch(err => alert("カメラ起動エラー：" + err.message));
-
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera.position.z = 3;
+
+    const renderer = new THREE.WebGLRenderer({ alpha: false, antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    const controls = new THREE.DeviceOrientationControls(camera);
-
     const texture = new THREE.TextureLoader().load("assets/cbc_logo.png");
     const geometry = new THREE.PlaneGeometry(2, 0.444);
-    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
+    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
     const logo = new THREE.Mesh(geometry, material);
-    logo.position.set(0, 0, -3); // 正面3m
     scene.add(logo);
 
     function animate() {
       requestAnimationFrame(animate);
-      controls.update();
-      logo.rotation.y += 0.003; // 回転をゆっくりに
       renderer.render(scene, camera);
     }
     animate();
