@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>テレビ塔AR（iOS許可対応）</title>
+  <title>テレビ塔AR（確実に見える修正版）</title>
   <style>
     html, body {
       margin: 0;
@@ -53,7 +53,6 @@
 
     let scene, camera, renderer, controls, logo;
 
-    // カメラ映像取得
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
       .then(stream => {
         video.srcObject = stream;
@@ -72,7 +71,7 @@
       controls = new THREE.DeviceOrientationControls(camera);
 
       const texture = new THREE.TextureLoader().load("assets/cbc_logo.png");
-      const geometry = new THREE.PlaneGeometry(10, 4.44); // 10m幅で視認性向上
+      const geometry = new THREE.PlaneGeometry(10, 4.44);
       const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
       logo = new THREE.Mesh(geometry, material);
       scene.add(logo);
@@ -86,8 +85,11 @@
 
       const forward = new THREE.Vector3(0, 0, -1);
       forward.applyQuaternion(camera.quaternion);
-      logo.position.copy(forward.multiplyScalar(3));
-      logo.lookAt(new THREE.Vector3(0, 0, 0));
+      forward.normalize();
+      forward.multiplyScalar(3); // 3m先
+
+      logo.position.copy(camera.position).add(forward);
+      logo.lookAt(camera.position);
 
       renderer.render(scene, camera);
     }
@@ -106,7 +108,6 @@
           })
           .catch(console.error);
       } else {
-        // AndroidやPCなど
         startButton.style.display = "none";
         initThree();
       }
