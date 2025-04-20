@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>本格AR：自然奥行き＆感動演出版</title>
+  <title>AR検証用（ロゴ静止・自然視野）</title>
   <style>
     html, body {
       margin: 0;
@@ -25,26 +25,12 @@
       border-radius: 8px;
       cursor: pointer;
     }
-    #status {
-      position: absolute;
-      top: 0;
-      left: 0;
-      padding: 8px;
-      background: rgba(0,0,0,0.8);
-      color: #0f0;
-      font-family: monospace;
-      font-size: 14px;
-      z-index: 10;
-    }
   </style>
 </head>
 <body>
-  <div id="status">📡 準備中…</div>
   <button id="startButton">モーションセンサーを有効にする</button>
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
   <script>
-    const statusEl = document.getElementById("status");
-
     class DeviceOrientationControls {
       constructor(object) {
         this.object = object;
@@ -91,14 +77,13 @@
           startButton.style.display = "none";
           initAR(stream);
         }).catch(e => {
-          statusEl.textContent = "❌ カメラ起動失敗: " + e.message;
           alert("❌ カメラエラー: " + e.message);
         });
     });
 
     function initAR(stream) {
       const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
+      const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
       camera.position.set(0, 1.6, 0);
       const renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
@@ -114,18 +99,11 @@
       video.setAttribute("playsinline", true);
       video.muted = true;
       video.srcObject = stream;
-
-      video.play().then(() => {
-        statusEl.textContent = "✅ カメラ再生中（背景同期中…）";
-      }).catch(err => {
-        statusEl.textContent = "❌ カメラ映像再生失敗: " + err.message;
-        alert("❌ カメラ映像再生失敗: " + err.message);
-      });
+      video.play();
 
       const videoTexture = new THREE.VideoTexture(video);
       const bgMaterial = new THREE.MeshBasicMaterial({ map: videoTexture });
-      const bgGeometry = new THREE.PlaneGeometry(10, 10);  // 十分に大きく
-
+      const bgGeometry = new THREE.PlaneGeometry(10, 10);
       const backgroundMesh = new THREE.Mesh(bgGeometry, bgMaterial);
       scene.add(backgroundMesh);
 
@@ -148,13 +126,11 @@
           controls.update();
           videoTexture.needsUpdate = true;
 
-          // 背景をカメラ前方に常に再配置
           const camDir = new THREE.Vector3();
           camera.getWorldDirection(camDir);
           backgroundMesh.position.copy(camera.position).add(camDir.multiplyScalar(3));
           backgroundMesh.quaternion.copy(camera.quaternion);
 
-          logo.rotation.y += 0.01;
           renderer.render(scene, camera);
         }
         animate();
