@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>テレビ塔上空に光るCBCロゴ</title>
+  <title>テレビ塔上空に光るロゴ（リアルタイム追従）</title>
   <style>
     html, body {
       margin: 0;
@@ -87,7 +87,6 @@
     const tvTowerLat = 35.170915;
     const tvTowerLon = 136.908498;
     const earthMeterPerDegree = 111000;
-    let currentLat = null, currentLon = null;
 
     const startButton = document.getElementById("startButton");
     const video = document.getElementById("cameraFeed");
@@ -125,24 +124,18 @@
 
       controls = new DeviceOrientationControls(camera);
 
-      const ambient = new THREE.AmbientLight(0xffffff, 1.0);
-      scene.add(ambient);
-
       const texture = new THREE.TextureLoader().load("logo.png");
       const geometry = new THREE.PlaneGeometry(100, 100);
-      const material = new THREE.MeshStandardMaterial({
-        map: texture,
-        emissive: new THREE.Color(1, 1, 1),
-        emissiveIntensity: 5.0,
-        transparent: true,
-        side: THREE.DoubleSide
-      });
+      const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
       logo = new THREE.Mesh(geometry, material);
       scene.add(logo);
 
       navigator.geolocation.watchPosition(position => {
-        currentLat = position.coords.latitude;
-        currentLon = position.coords.longitude;
+        const userLat = position.coords.latitude;
+        const userLon = position.coords.longitude;
+        const dx = (tvTowerLon - userLon) * Math.cos(userLat * Math.PI / 180) * earthMeterPerDegree;
+        const dz = (tvTowerLat - userLat) * earthMeterPerDegree;
+        logo.position.set(dx, 200, -dz);
       }, e => console.error("GPS error:", e), { enableHighAccuracy: true });
 
       animate();
@@ -151,11 +144,6 @@
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
-      if (logo && currentLat !== null && currentLon !== null) {
-        const dx = (tvTowerLon - currentLon) * Math.cos(currentLat * Math.PI / 180) * earthMeterPerDegree;
-        const dz = (tvTowerLat - currentLat) * earthMeterPerDegree;
-        logo.position.set(dx, 200, -dz);
-      }
       if (logo) logo.rotation.y += 0.01;
       renderer.render(scene, camera);
     }
