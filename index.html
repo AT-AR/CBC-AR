@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>テレビ塔上空に光るCBCロゴ</title>
+  <style>
+    html, body {
+      margin: 0;
+      overflow: hidden;
+      background: black;
+    }
+    #cameraFeed {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      z-index: 0;
+    }
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 1;
+      pointer-events: none;
+    }
+    #startButton {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 16px 32px;
+      font-size: 18px;
+      z-index: 2;
+      background: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <video id="cameraFeed" autoplay playsinline muted></video>
+  <button id="startButton">モーションセンサーを有効にする</button>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+
+  <script>
+    class DeviceOrientationControls {
+      constructor(object) {
+        this.object = object;
+        this.object.rotation.reorder("YXZ");
+        this.enabled = true;
+        this.deviceOrientation = {};
+        this.screenOrientation = 0;
+        this.alphaOffset = 0;
+        const onDeviceOrientationChangeEvent = (event) => {
+          this.deviceOrientation = event;
+        };
+        const onScreenOrientationChangeEvent = () => {
+          this.screenOrientation = window.orientation || 0;
+        };
+        window.addEventListener("orientationchange", onScreenOrientationChangeEvent);
+        window.addEventListener("deviceorientation", onDeviceOrientationChangeEvent);
+        onScreenOrientationChangeEvent();
+        this.setObjectQuaternion = (quaternion, alpha, beta, gamma, orient) => {
+          const zee = new THREE.Vector3(0, 0, 1);
+          const euler = new THREE.Euler();
+          const q0 = new THREE.Quaternion();
+          const q1 = new THREE.Quaternion(- Math.sqrt(0.5), 0, 0, Math.sqrt(0.5));
+          euler.set(beta, alpha, - gamma, 'YXZ');
+          quaternion.setFromEuler(euler);
+          quaternion.multiply(q1);
+          quaternion.multiply(q0.setFromAxisAngle(zee, - orient));
+        };
+      }
+      update() {
+        if (!this.enabled) return;
+        const alpha = THREE.MathUtils.degToRad(this.deviceOrientation.alpha || 0) + this.alphaOffset;
+        const beta = THREE.MathUtils.degToRad(this.deviceOrientation.beta || 0);
+        const gamma = THREE.MathUtils.degToRad(this.deviceOrientation.gamma || 0);
+        const orient = THREE.MathUtils.degToRad(this.screenOrientation || 0);
+        this.setObjectQuaternion(this.object.quaternion, alpha, beta, gamma, orient);
+      }
+    }
+
+    const tvTowerLat = 35.170915;
+    const tvTowerLon = 136.908498;
+    const earthMeterPerDegree = 111000;
+    let currentLat = null, currentLon = null;
+
+    const startButton = document.getElementById("startButton");
+    const video = document.getElementById("cameraFeed");
+    let scene, camera, renderer, controls, logo;
+
+    startButton.addEventListener("click", () => {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
+        .then(stream => {
+          video.srcObject = stream;
+          if (typeof DeviceMotionEvent !== "undefined" &&
+              typeof DeviceMotionEvent.requestPermission === "function") {
+            DeviceMotionEvent.requestPermission().then(response => {
+              if (response === "granted") {
+                startButton.style.display = "none";
+                initAR();
+              } else {
+                alert("❌ センサー使用が許可されませんでした。");
+              }
+            }).catch(e => alert("⚠️ センサーエラー: " + e.message));
+          } else {
+            startButton.style.display = "none";
+            initAR();
+          }
+        }).catch(e => alert("⚠️ カメラ起動エラー: " + e.message));
+    });
+
+    function initAR() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
+      camera.position.set(0, 1.6, 0);
+
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      controls = new DeviceOrientationControls(camera);
+
+      const ambient = new THREE.AmbientLight(0xffffff, 1.0);
+      scene.add(ambient);
+
+      const texture = new THREE.TextureLoader().load("logo.png");
+      const geometry = new THREE.PlaneGeometry(100, 100);
+      const material = new THREE.MeshStandardMaterial({
+        map: texture,
+        emissive: new THREE.Color(1, 1, 1),
+        emissiveIntensity: 5.0,
+        transparent: true,
+        side: THREE.DoubleSide
+      });
+      logo = new THREE.Mesh(geometry, material);
+      scene.add(logo);
+
+      navigator.geolocation.watchPosition(position => {
+        currentLat = position.coords.latitude;
+        currentLon = position.coords.longitude;
+      }, e => console.error("GPS error:", e), { enableHighAccuracy: true });
+
+      animate();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      if (logo && currentLat !== null && currentLon !== null) {
+        const dx = (tvTowerLon - currentLon) * Math.cos(currentLat * Math.PI / 180) * earthMeterPerDegree;
+        const dz = (tvTowerLat - currentLat) * earthMeterPerDegree;
+        logo.position.set(dx, 200, -dz);
+      }
+      if (logo) logo.rotation.y += 0.01;
+      renderer.render(scene, camera);
+    }
+  </script>
+</body>
+</html>
