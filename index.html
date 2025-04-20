@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>テレビ塔AR（ロゴ10m版）</title>
+  <title>テレビ塔AR（iOS許可対応）</title>
   <style>
     html, body {
       margin: 0;
@@ -25,17 +25,35 @@
       left: 0;
       z-index: 1;
     }
+    #startButton {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 16px 32px;
+      font-size: 18px;
+      z-index: 10;
+      background: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <video id="bgvideo" autoplay muted playsinline></video>
+  <button id="startButton">モーションセンサーを有効にする</button>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/examples/js/controls/DeviceOrientationControls.js"></script>
 
   <script>
+    const startButton = document.getElementById("startButton");
     const video = document.getElementById("bgvideo");
 
+    let scene, camera, renderer, controls, logo;
+
+    // カメラ映像取得
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
       .then(stream => {
         video.srcObject = stream;
@@ -44,37 +62,55 @@
         });
       });
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+    function initThree() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
 
-    const controls = new THREE.DeviceOrientationControls(camera);
+      controls = new THREE.DeviceOrientationControls(camera);
 
-    // サイズ：横10m（高さは比率保持で4.44m）
-    const texture = new THREE.TextureLoader().load("assets/cbc_logo.png");
-    const geometry = new THREE.PlaneGeometry(10, 4.44);
-    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-    const logo = new THREE.Mesh(geometry, material);
-    scene.add(logo);
+      const texture = new THREE.TextureLoader().load("assets/cbc_logo.png");
+      const geometry = new THREE.PlaneGeometry(10, 4.44); // 10m幅で視認性向上
+      const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+      logo = new THREE.Mesh(geometry, material);
+      scene.add(logo);
+
+      animate();
+    }
 
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
 
-      // カメラの前方3mにロゴを配置
       const forward = new THREE.Vector3(0, 0, -1);
       forward.applyQuaternion(camera.quaternion);
       logo.position.copy(forward.multiplyScalar(3));
-
-      // ロゴをカメラ方向に向ける
       logo.lookAt(new THREE.Vector3(0, 0, 0));
 
       renderer.render(scene, camera);
     }
 
-    animate();
+    startButton.addEventListener("click", () => {
+      if (typeof DeviceMotionEvent !== "undefined" &&
+          typeof DeviceMotionEvent.requestPermission === "function") {
+        DeviceMotionEvent.requestPermission()
+          .then(response => {
+            if (response === "granted") {
+              startButton.style.display = "none";
+              initThree();
+            } else {
+              alert("モーションセンサーが許可されませんでした。");
+            }
+          })
+          .catch(console.error);
+      } else {
+        // AndroidやPCなど
+        startButton.style.display = "none";
+        initThree();
+      }
+    });
   </script>
 </body>
 </html>
