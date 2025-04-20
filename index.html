@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>ARロゴ（3m前に固定表示テスト）</title>
+  <title>ARロゴ表示テスト（テクスチャ遅延対応）</title>
   <style>
     html, body {
       margin: 0;
@@ -86,7 +86,7 @@
 
     const startButton = document.getElementById("startButton");
     const video = document.getElementById("cameraFeed");
-    let scene, camera, renderer, controls, logo;
+    let scene, camera, renderer, controls;
 
     startButton.addEventListener("click", () => {
       navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
@@ -120,21 +120,21 @@
 
       controls = new DeviceOrientationControls(camera);
 
-      const texture = new THREE.TextureLoader().load("logo.png");
-      const geometry = new THREE.PlaneGeometry(100, 30);
-      const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
-      logo = new THREE.Mesh(geometry, material);
-      logo.position.set(0, 0, -3); // カメラから見て3m先に表示
-      camera.add(logo); // カメラに追従させる
-      scene.add(camera);
+      new THREE.TextureLoader().load("logo.png", (texture) => {
+        const geometry = new THREE.PlaneGeometry(100, 30);
+        const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
+        const logo = new THREE.Mesh(geometry, material);
+        logo.position.set(0, 0, -3); // カメラの3m前
+        camera.add(logo); // カメラに追従
+        scene.add(camera);
 
-      animate();
-    }
-
-    function animate() {
-      requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
+        function animate() {
+          requestAnimationFrame(animate);
+          controls.update();
+          renderer.render(scene, camera);
+        }
+        animate();
+      });
     }
   </script>
 </body>
