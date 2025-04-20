@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>ARロゴ（テレビ塔方向 ±15° 表示）</title>
+  <title>ARロゴ常時表示テスト</title>
   <style>
     html, body {
       margin: 0;
@@ -88,26 +88,10 @@
     const tvTowerLon = 136.908498;
     const earthMeterPerDegree = 111000;
     let currentLat = null, currentLon = null;
-    let phoneHeading = null;
 
     const startButton = document.getElementById("startButton");
     const video = document.getElementById("cameraFeed");
-    let scene, camera, renderer, controls, logo, material, texture;
-
-    window.addEventListener('deviceorientationabsolute', (e) => {
-      if (e.alpha !== null) {
-        phoneHeading = e.alpha;
-      }
-    });
-
-    function calculateBearing(lat1, lon1, lat2, lon2) {
-      const toRad = deg => deg * Math.PI / 180;
-      const dLon = toRad(lon2 - lon1);
-      const y = Math.sin(dLon) * Math.cos(toRad(lat2));
-      const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
-                Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
-      return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-    }
+    let scene, camera, renderer, controls, logo;
 
     startButton.addEventListener("click", () => {
       navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
@@ -146,30 +130,24 @@
 
       controls = new DeviceOrientationControls(camera);
 
-      texture = new THREE.TextureLoader().load("logo.png", (tex) => {
-        const aspect = tex.image.width / tex.image.height;
-        const geometry = new THREE.PlaneGeometry(100, 100 / aspect);
-        material = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide });
-        logo = new THREE.Mesh(geometry, material);
-        scene.add(logo);
-        animate();
-      });
+      const texture = new THREE.TextureLoader().load("logo.png");
+      const geometry = new THREE.PlaneGeometry(100, 30); // 縦横比固定（仮）
+      const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
+      logo = new THREE.Mesh(geometry, material);
+      scene.add(logo);
+
+      animate();
     }
 
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
 
-      if (logo && currentLat !== null && currentLon !== null && phoneHeading !== null) {
+      if (logo && currentLat !== null && currentLon !== null) {
         const dx = (tvTowerLon - currentLon) * Math.cos(currentLat * Math.PI / 180) * earthMeterPerDegree;
         const dz = (tvTowerLat - currentLat) * earthMeterPerDegree;
         logo.position.set(dx, 200, -dz);
-
-        const bearingToTower = calculateBearing(currentLat, currentLon, tvTowerLat, tvTowerLon);
-        let diff = Math.abs(phoneHeading - bearingToTower);
-        if (diff > 180) diff = 360 - diff;
-
-        logo.visible = (diff < 15);
+        logo.visible = true; // 常時表示
       }
 
       if (logo) logo.rotation.y += 0.01;
